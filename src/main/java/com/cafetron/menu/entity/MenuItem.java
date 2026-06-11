@@ -1,4 +1,4 @@
-package com.cafetron.menu;
+package com.cafetron.menu.entity;
 
 import com.cafetron.vendor.Vendor;
 import jakarta.persistence.*;
