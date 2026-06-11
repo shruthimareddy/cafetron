@@ -1,11 +1,10 @@
-package com.cafetron.orderQR;
+package com.cafetron.orderQR.entity;
 
 import com.cafetron.order.Order;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.Delegate;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
