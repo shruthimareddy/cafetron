@@ -1,4 +1,4 @@
-package com.cafetron.orderQR;
+package com.cafetron.orderQR.service;
 
 import com.cafetron.order.Order;
 
