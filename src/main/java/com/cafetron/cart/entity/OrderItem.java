@@ -1,6 +1,6 @@
 package com.cafetron.cart.entity;
 
-import com.cafetron.menu.MenuItem;
+import com.cafetron.menu.entity.MenuItem;
 import com.cafetron.order.Order;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
