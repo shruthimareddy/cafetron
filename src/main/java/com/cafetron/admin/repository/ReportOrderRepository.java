@@ -15,19 +15,20 @@ import java.util.List;
 public interface ReportOrderRepository extends JpaRepository<Order, Long> {
 
     @Query("""
-    SELECT new com.cafetron.admin.dto.DailySummaryDTO(
-        COUNT(o.id),
-        COALESCE(SUM(o.totalAmount), 0),
-        COALESCE((
-            SELECT SUM(oi.quantity) 
-            FROM OrderItem oi 
-            WHERE oi.order.id = o.id
-        ), 0)
-    )
-    FROM Order o
-    WHERE CAST(o.createdAt AS date) = :date
-      AND o.overallStatus NOT IN ('CANCELLED', 'VENDOR_DECLINED')
-""")
+        SELECT new com.cafetron.admin.dto.DailySummaryDTO(
+            COUNT(o.id),
+            COALESCE(SUM(o.totalAmount), 0),
+            COALESCE((
+                SELECT SUM(oi.quantity) 
+                FROM OrderItem oi 
+                WHERE CAST(oi.order.createdAt AS date) = :date
+                  AND oi.order.overallStatus NOT IN ('CANCELLED', 'VENDOR_DECLINED')
+            ), 0)
+        )
+        FROM Order o
+        WHERE CAST(o.createdAt AS date) = :date
+          AND o.overallStatus NOT IN ('CANCELLED', 'VENDOR_DECLINED')
+    """)
     DailySummaryDTO getDailySummary(@Param("date") LocalDate date);
 
     // ─────────────────────────────────────────────────────────────────
