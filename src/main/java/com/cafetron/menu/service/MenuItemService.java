@@ -8,7 +8,9 @@ import com.cafetron.menu.repository.MenuItemRepository;
 import com.cafetron.menu.repository.VendorRepository;
 
 import jakarta.transaction.Transactional;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -29,7 +31,7 @@ public class MenuItemService {
 
         // Find the vendor named in the request (error if missing).
         Vendor vendor = vendorRepository.findById(request.vendorId())
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
 
         // Build a new item and copy in the request's values.
         MenuItem item = new MenuItem();
@@ -48,7 +50,7 @@ public class MenuItemService {
     // READ one item by id.
     public MenuItemResponse getById(Long menuItemId) {
         MenuItem item = menuItemRepository.findById(menuItemId)
-                .orElseThrow(() -> new RuntimeException("Menu item not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
         return toResponse(item);
     }
 
@@ -63,10 +65,10 @@ public class MenuItemService {
     // UPDATE an existing item
     public MenuItemResponse update(Long menuItemId, MenuItemRequest request) {
         MenuItem item = menuItemRepository.findById(menuItemId)
-                .orElseThrow(() -> new RuntimeException("Menu item not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
 
         Vendor vendor = vendorRepository.findById(request.vendorId())
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
 
         item.setItemName(request.itemName());
         item.setPrice(request.price());
@@ -108,10 +110,10 @@ public class MenuItemService {
     // Set an item's stock (e.g. the morning restock).
     public MenuItemResponse setStock(Long menuItemId, int newStock) {
         if (newStock < 0) {
-            throw new RuntimeException("Stock cannot be negative");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock cannot be negative");
         }
         MenuItem item = menuItemRepository.findById(menuItemId)
-                .orElseThrow(() -> new RuntimeException("Menu item not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
         item.setStock(newStock);
         item.setAvailable(newStock > 0); // auto rule: 0 -> hidden, else shown
         return toResponse(menuItemRepository.save(item));
@@ -120,9 +122,9 @@ public class MenuItemService {
     // Manually show/hide an item (override). Can't enable a zero-stock item.
     public MenuItemResponse setAvailability(Long menuItemId, boolean available) {
         MenuItem item = menuItemRepository.findById(menuItemId)
-                .orElseThrow(() -> new RuntimeException("Menu item not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
         if (available && item.getStock() == 0) {
-            throw new RuntimeException("Cannot make an item available with zero stock");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot make an item available with zero stock");
         }
         item.setAvailable(available);
         return toResponse(menuItemRepository.save(item));
@@ -131,9 +133,9 @@ public class MenuItemService {
     // Reduce stock when an order is placed.
     public MenuItemResponse decreaseStock(Long menuItemId, int quantity) {
         MenuItem item = menuItemRepository.findById(menuItemId)
-                .orElseThrow(() -> new RuntimeException("Menu item not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
         if (item.getStock() < quantity) {
-            throw new RuntimeException("Not enough stock");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not enough stock");
         }
         item.setStock(item.getStock() - quantity);
         item.setAvailable(item.getStock() > 0); // hide automatically if it hit 0
