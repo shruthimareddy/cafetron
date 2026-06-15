@@ -1,7 +1,7 @@
 package com.cafetron.admin.repository;
 
 import com.cafetron.admin.dto.VendorDeclineSummaryDTO;
-import com.cafetron.vendor.Vendor;
+import com.cafetron.vendor.entity.Vendor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
