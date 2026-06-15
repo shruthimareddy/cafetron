@@ -8,7 +8,9 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 
-public interface WalletRepository extends JpaRepository<Wallet, Long> {
+public interface WalletRepository extends JpaRepository<Wallet,Long> {
+    Optional<Wallet> findByUserId(Long userId);
+    Optional<Wallet> findUserById(Long id);
 
     Optional<Wallet> findByUserId(Long userId);
 
