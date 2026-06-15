@@ -20,8 +20,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from MenuItem m where m.id = :id")
-<<<<<<< HEAD
-    MenuItem findByIdForUpdate(@NotNull Long id);
+    Optional<MenuItem> findByIdForUpdate(@NotNull Long id);
 
     @Query("SELECT m FROM MenuItem m WHERE m.isAvailable = true AND m.vendor.isActive = true")
     List<MenuItem> findTodaysMenu(); // Today's menu: available items from active vendors.
@@ -36,7 +35,5 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     @Query("SELECT m FROM MenuItem m WHERE m.isAvailable = true AND m.vendor.isActive = true " +
             "AND m.foodType = :foodType")
     List<MenuItem> filterByFoodType(@Param("foodType") String foodType);
-=======
-    Optional<MenuItem> findByIdForUpdate(@NotNull Long id);
->>>>>>> a9668c5 (feat(order): implement placeOrder happy path with stock lock and wallet debit wiring)
+
 }
