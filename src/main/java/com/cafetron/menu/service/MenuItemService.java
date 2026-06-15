@@ -3,7 +3,7 @@ package com.cafetron.menu.service;
 import com.cafetron.menu.dto.MenuItemRequest;
 import com.cafetron.menu.dto.MenuItemResponse;
 import com.cafetron.menu.entity.MenuItem;
-import com.cafetron.vendor.Vendor;
+import com.cafetron.vendor.entity.Vendor;
 import com.cafetron.menu.repository.MenuItemRepository;
 import com.cafetron.menu.repository.VendorRepository;
 
