@@ -7,6 +7,8 @@ import com.cafetron.vendor.dto.VendorResponse;
 import com.cafetron.vendor.entity.Vendor;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,7 +38,7 @@ public class VendorService {
     // READ one vendor.
     public VendorResponse getById(Long vendorId) {
         Vendor vendor = vendorRepository.findById(vendorId)
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
         return toResponse(vendor);
     }
 
@@ -55,7 +57,7 @@ public class VendorService {
     // UPDATE a vendor's details (not its active state).
     public VendorResponse update(Long vendorId, VendorRequest request) {
         Vendor vendor = vendorRepository.findById(vendorId)
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
         vendor.setName(request.name());
         vendor.setEmail(request.email());
         vendor.setPhone(request.phone());
@@ -66,7 +68,7 @@ public class VendorService {
     // Activate / deactivate a vendor (the on-off switch).
     public VendorResponse setActive(Long vendorId, boolean active) {
         Vendor vendor = vendorRepository.findById(vendorId)
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
         vendor.setActive(active);
         return toResponse(vendorRepository.save(vendor));
     }
