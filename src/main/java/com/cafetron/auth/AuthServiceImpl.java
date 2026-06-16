@@ -3,40 +3,56 @@ package com.cafetron.auth;
 import com.cafetron.auth.dto.AuthResponse;
 import com.cafetron.auth.dto.LoginRequest;
 import com.cafetron.auth.dto.RegisterRequest;
-import com.cafetron.user.repository.UserRepository;
 import com.cafetron.security.JwtUtil;
 import com.cafetron.security.UserDetailsServiceImpl;
 import com.cafetron.security.UserPrincipal;
 import com.cafetron.user.User;
+import com.cafetron.user.repository.UserRepository;
+import com.cafetron.wallet.entity.Transaction;
+import com.cafetron.wallet.entity.TransactionType;
+import com.cafetron.wallet.entity.Wallet;
+import com.cafetron.wallet.repository.TransactionRepository;
+import com.cafetron.wallet.repository.WalletRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+
+    private static final BigDecimal INITIAL_WALLET_BALANCE = new BigDecimal("1500.00");
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsServiceImpl userDetailsService;
+    private final WalletRepository walletRepository;
+    private final TransactionRepository transactionRepository;
 
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtUtil jwtUtil,
                            AuthenticationManager authenticationManager,
-                           UserDetailsServiceImpl userDetailsService) {
+                           UserDetailsServiceImpl userDetailsService,
+                           WalletRepository walletRepository,
+                           TransactionRepository transactionRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
+        this.walletRepository = walletRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @Override
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -62,6 +78,20 @@ public class AuthServiceImpl implements AuthService {
         user.setCreatedAt(LocalDateTime.now());
 
         userRepository.save(user);
+
+        // Auto-create wallet for newly registered users so order placement can debit immediately.
+        Wallet wallet = new Wallet();
+        wallet.setUser(user);
+        wallet.setBalance(INITIAL_WALLET_BALANCE);
+        wallet.setUpdatedAt(LocalDateTime.now());
+        walletRepository.save(wallet);
+
+        Transaction topUp = new Transaction();
+        topUp.setWallet(wallet);
+        topUp.setAmount(INITIAL_WALLET_BALANCE);
+        topUp.setType(TransactionType.TOP_UP);
+        topUp.setDescription("Initial wallet credit on registration");
+        transactionRepository.save(topUp);
 
         UserPrincipal principal = new UserPrincipal(user);
         String token = jwtUtil.generateToken(principal);

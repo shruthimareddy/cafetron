@@ -17,10 +17,14 @@ public class CustomAuthEntryPoint implements AuthenticationEntryPoint {
                          AuthenticationException authException)
             throws IOException {
 
+        String reason = authException.getMessage() != null
+                ? authException.getMessage()
+                : "Authentication required";
+
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.getWriter().write(
-                "{\"error\": \"Invalid employee ID or password\"}"
+                "{\"error\": \"401 Unauthorized\", \"reason\": \"" + reason + "\", \"hint\": \"Add header: Authorization: Bearer <token>\"}"
         );
     }
 }
