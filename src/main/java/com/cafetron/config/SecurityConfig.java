@@ -63,7 +63,16 @@ public class SecurityConfig {
                         .authenticationEntryPoint(customAuthEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().permitAll()
+                                .requestMatchers("/api/auth/**", "/auth/**").permitAll()
+                                .requestMatchers("/api/admin/**", "/api/dev/**").hasRole("ADMIN")
+                                .requestMatchers("/api/vendor/orders/**").hasAnyRole("VENDOR", "ADMIN")
+                                .requestMatchers("/api/vendors/**", "/vendors/**").authenticated()
+                                .requestMatchers("/api/menu/**", "/menu/**").authenticated()
+                                .requestMatchers("/api/orders/**").authenticated()
+                                .requestMatchers("/api/order-qr/**").authenticated()
+                                .requestMatchers("/api/wallet/**").authenticated()
+                                .anyRequest().authenticated()
+//                        .anyRequest().permitAll()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
