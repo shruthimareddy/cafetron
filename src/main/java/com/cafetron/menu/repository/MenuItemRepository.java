@@ -33,7 +33,8 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
     // Today's menu filtered by dietary type.
     @Query("SELECT m FROM MenuItem m WHERE m.isAvailable = true AND m.vendor.isActive = true " +
-            "AND m.foodType = :foodType")
+            "AND LOWER(REPLACE(REPLACE(m.foodType, '_', ' '), '-', ' ')) = " +
+            "LOWER(REPLACE(REPLACE(:foodType, '_', ' '), '-', ' '))")
     List<MenuItem> filterByFoodType(@Param("foodType") String foodType);
 
 }
