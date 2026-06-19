@@ -67,10 +67,11 @@ public class OrderServiceImpl implements OrderService {
         order.setUserId(userId);
         order.setPickupSlot(cleanRequired(request.pickupSlot(), "Pickup slot is required."));
         order.setLocation(cleanRequired(request.location(), "Pickup location is required."));
-        order.setPickupTimeZone(validateTimeZone(request.pickupTimeZone()));
+        String pickupTimeZone = validateTimeZone(request.pickupTimeZone());
+        order.setPickupTimeZone(pickupTimeZone);
         order.setOverallStatus("PENDING_VENDOR");
         order.setPaymentStatus("PAID");
-        order.setCreatedAt(LocalDateTime.now());
+        order.setCreatedAt(LocalDateTime.now(ZoneId.of(pickupTimeZone)));
 
         for (PlaceOrderItemRequest itemRequest : sortedItems) {
             MenuItem menuItem = menuItemRepository.findByIdForUpdate(itemRequest.menuItemId())
