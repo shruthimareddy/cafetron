@@ -22,9 +22,10 @@ import com.cafetron.wallet.entity.TransactionType;
 import com.cafetron.wallet.entity.Wallet;
 import com.cafetron.wallet.repository.TransactionRepository;
 import com.cafetron.wallet.repository.WalletRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +60,7 @@ public class DevSeedController {
     private final OrderQRRepository orderQRRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final long vendorResponseTimeoutMinutes;
 
     public DevSeedController(UserRepository userRepository,
                              WalletRepository walletRepository,
@@ -70,7 +72,8 @@ public class DevSeedController {
                              VendorOrderStatusRepository vendorOrderStatusRepository,
                              OrderQRRepository orderQRRepository,
                              PasswordEncoder passwordEncoder,
-                             JwtUtil jwtUtil) {
+                             JwtUtil jwtUtil,
+                             @Value("${cafetron.vendor.response-timeout-minutes:10}") long vendorResponseTimeoutMinutes) {
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
@@ -82,6 +85,7 @@ public class DevSeedController {
         this.orderQRRepository = orderQRRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.vendorResponseTimeoutMinutes = vendorResponseTimeoutMinutes;
     }
 
     @PostMapping("/seed")
@@ -187,7 +191,7 @@ public class DevSeedController {
             vos.setOrderItem(orderItem);
             vos.setVendor(vendor);
             vos.setStatus(VendorOrderStatusType.PENDING);
-            vos.setActionExpiresAt(now.plusMinutes(30));
+            vos.setActionExpiresAt(now.plusMinutes(vendorResponseTimeoutMinutes));
             vos.setCreatedAt(now);
             vendorOrderStatusRepository.save(vos);
         }

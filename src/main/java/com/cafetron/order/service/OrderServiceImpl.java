@@ -13,16 +13,24 @@ import com.cafetron.pickup.VendorOrderStatusType;
 import com.cafetron.pickup.repository.VendorOrderStatusRepository;
 import com.cafetron.security.UserPrincipal;
 import com.cafetron.wallet.service.WalletService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+    private static final ZoneId CAFETERIA_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final long MIN_PICKUP_LEAD_MINUTES = 30;
+    private static final long USER_TIMEOUT_WINDOW_MINUTES = 5;
 
     private final MenuItemRepository menuItemRepository;
     private final OrderRepository orderRepository;
@@ -30,6 +38,7 @@ public class OrderServiceImpl implements OrderService {
     private final WalletService walletService;
     private final OrderQRService orderQRService;
     private final VendorOrderStatusRepository vendorOrderStatusRepository;
+    private final long vendorResponseTimeoutMinutes;
 
     public OrderServiceImpl(
             MenuItemRepository menuItemRepository,
@@ -37,7 +46,8 @@ public class OrderServiceImpl implements OrderService {
             OrderItemRepository orderItemRepository,
             WalletService walletService,
             OrderQRService orderQRService,
-            VendorOrderStatusRepository vendorOrderStatusRepository
+            VendorOrderStatusRepository vendorOrderStatusRepository,
+            @Value("${cafetron.vendor.response-timeout-minutes:10}") long vendorResponseTimeoutMinutes
     ) {
         this.menuItemRepository = menuItemRepository;
         this.orderRepository = orderRepository;
@@ -45,6 +55,7 @@ public class OrderServiceImpl implements OrderService {
         this.walletService = walletService;
         this.orderQRService = orderQRService;
         this.vendorOrderStatusRepository = vendorOrderStatusRepository;
+        this.vendorResponseTimeoutMinutes = vendorResponseTimeoutMinutes;
     }
 
     @Override
@@ -66,6 +77,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = new Order();
         order.setUserId(userId);
         order.setPickupSlot(cleanRequired(request.pickupSlot(), "Pickup slot is required."));
+        validatePickupSlotTime(request.pickupSlotTime());
         order.setLocation(cleanRequired(request.location(), "Pickup location is required."));
         String pickupTimeZone = validateTimeZone(request.pickupTimeZone());
         order.setPickupTimeZone(pickupTimeZone);
@@ -115,14 +127,14 @@ public class OrderServiceImpl implements OrderService {
         }
         List<OrderItem> savedItems = orderItemRepository.saveAll(orderItems);
 
-        // Slice 4a: create one VendorOrderStatus row per order item (PENDING, 30-min window)
+        // Slice 4a: create one VendorOrderStatus row per order item for vendor response tracking.
         List<VendorOrderStatus> vendorStatuses = new ArrayList<>();
         for (OrderItem savedItem : savedItems) {
             VendorOrderStatus vs = new VendorOrderStatus();
             vs.setOrderItem(savedItem);
             vs.setVendor(savedItem.getMenuItem().getVendor());
             vs.setStatus(VendorOrderStatusType.PENDING);
-            vs.setActionExpiresAt(LocalDateTime.now().plusMinutes(30));
+            vs.setActionExpiresAt(LocalDateTime.now().plusMinutes(vendorResponseTimeoutMinutes));
             vs.setCreatedAt(LocalDateTime.now());
             vendorStatuses.add(vs);
         }
@@ -272,6 +284,7 @@ public class OrderServiceImpl implements OrderService {
         if (isClosedOrder(order)) {
             return getOrderDetail(userId, orderId);
         }
+        validateUserTimeoutWindow(order);
 
         LocalDateTime now = LocalDateTime.now();
         List<VendorOrderStatus> statuses = vendorOrderStatusRepository.findByOrderItem_Order_IdWithOrderItem(orderId);
@@ -316,6 +329,51 @@ public class OrderServiceImpl implements OrderService {
             return ZoneId.of(cleaned).getId();
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid pickup timezone: " + cleaned);
+        }
+    }
+
+    private void validatePickupSlotTime(String pickupSlotTime) {
+        String cleaned = cleanRequired(pickupSlotTime, "Pickup slot time is required.");
+        LocalTime pickupTime;
+        try {
+            pickupTime = LocalTime.parse(cleaned);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Invalid pickup slot time: " + cleaned);
+        }
+
+        LocalDate cafeteriaToday = LocalDate.now(CAFETERIA_ZONE);
+        ZonedDateTime pickupDateTime = ZonedDateTime.of(cafeteriaToday, pickupTime, CAFETERIA_ZONE);
+        ZonedDateTime earliestPickupTime = ZonedDateTime.now(CAFETERIA_ZONE).plusMinutes(MIN_PICKUP_LEAD_MINUTES);
+
+        if (pickupDateTime.isBefore(earliestPickupTime)) {
+            throw new IllegalArgumentException("Pickup time must be at least 30 minutes from now.");
+        }
+    }
+
+    private void validateUserTimeoutWindow(Order order) {
+        LocalDateTime createdAt = order.getCreatedAt();
+        if (createdAt == null) {
+            throw new IllegalStateException("Order placement time is not available.");
+        }
+
+        LocalDateTime deadline = createdAt.plusMinutes(USER_TIMEOUT_WINDOW_MINUTES);
+        LocalDateTime now = LocalDateTime.now(getOrderZone(order));
+
+        if (now.isAfter(deadline)) {
+            throw new IllegalArgumentException("Timeout can only be requested within 5 minutes of placing the order.");
+        }
+    }
+
+    private ZoneId getOrderZone(Order order) {
+        String timeZone = order.getPickupTimeZone();
+        if (timeZone == null || timeZone.isBlank()) {
+            return ZoneId.systemDefault();
+        }
+
+        try {
+            return ZoneId.of(timeZone);
+        } catch (Exception ex) {
+            return ZoneId.systemDefault();
         }
     }
 }

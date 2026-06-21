@@ -30,6 +30,9 @@ cafetron:
     # Replace with a long random base64 secret in a real env (env var, not committed).
     secret: ${JWT_SECRET:Y2hhbmdlLW1lLXRoaXMtaXMtYS1kZXYtb25seS1zZWNyZXQtMTIzNDU2Nzg=}
     expiration-ms: 86400000        # 24h
+  vendor:
+    response-timeout-minutes: ${VENDOR_RESPONSE_TIMEOUT_MINUTES:10}
+    timeout-scan-ms: ${VENDOR_TIMEOUT_SCAN_MS:60000}
   order:
     cancel-window-minutes: 5       # Module 3
     daily-cutoff: "15:00"          # Module 6 (simple LocalTime check, no Quartz)
