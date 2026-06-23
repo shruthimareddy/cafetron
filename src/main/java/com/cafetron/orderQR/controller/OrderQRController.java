@@ -51,6 +51,11 @@ public class OrderQRController {
                     .body(new GenQRResponse(null, "You cannot access this order QR"));
         }
 
+        if (!isQrActive(order)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new GenQRResponse(null, "Pickup QR is available only after the vendor accepts the order"));
+        }
+
         OrderQR orderQR = orderQRRepository.findByOrderId(orderId).orElse(null);
 
         if ( orderQR == null ) {
@@ -95,11 +100,16 @@ public class OrderQRController {
                     .body(new DecodeQRResponse(false, null, "Failed to decode QR code"));
         }
 
-        boolean doesOrderExist = orderRepository.findByToken(token).isPresent();
+        Order order = orderRepository.findByToken(token).orElse(null);
 
-        if ( !doesOrderExist ) {
+        if ( order == null ) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new DecodeQRResponse(false, null, "No order found for this token"));
+        }
+
+        if (!isQrActive(order)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new DecodeQRResponse(false, null, "Pickup QR is not active until the vendor accepts the order"));
         }
 
         return ResponseEntity.ok(new DecodeQRResponse(true, token, "QR code decoded successfully"));
@@ -113,5 +123,10 @@ public class OrderQRController {
     private boolean canDecodeQr(UserPrincipal principal) {
         return "VENDOR".equalsIgnoreCase(principal.getRole())
                 || "ADMIN".equalsIgnoreCase(principal.getRole());
+    }
+
+    private boolean isQrActive(Order order) {
+        return "VENDOR_ACCEPTED".equalsIgnoreCase(order.getOverallStatus())
+                || "READY_FOR_PICKUP".equalsIgnoreCase(order.getOverallStatus());
     }
 }

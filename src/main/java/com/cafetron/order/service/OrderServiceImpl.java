@@ -193,6 +193,10 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByToken(token.trim())
                 .orElseThrow(() -> new IllegalArgumentException("Order not found for this QR token."));
 
+        if (!isQrActive(order)) {
+            throw new IllegalStateException("Pickup QR is not active until the vendor accepts the order.");
+        }
+
         return toOrderDetailResponse(order, principal);
     }
 
@@ -262,6 +266,12 @@ public class OrderServiceImpl implements OrderService {
 
     private boolean isAdmin(UserPrincipal principal) {
         return "ADMIN".equalsIgnoreCase(principal.getRole());
+    }
+
+    private boolean isQrActive(Order order) {
+        String orderStatus = order.getOverallStatus() == null ? "" : order.getOverallStatus();
+        return "VENDOR_ACCEPTED".equalsIgnoreCase(orderStatus)
+                || "READY_FOR_PICKUP".equalsIgnoreCase(orderStatus);
     }
 
     @Override
